@@ -14,14 +14,37 @@ public static class SaveSystem
 
     public static void Save(string saveString)
     {
-        File.WriteAllText(SAVE_FOLDER + "/save.txt", saveString);
+        int saveNumber = 1;
+        while (File.Exists("save_" + saveNumber + ".txt"))
+        {
+            saveNumber++;
+        }
+        File.WriteAllText(SAVE_FOLDER + "save" + saveNumber + ".txt", saveString);
     }
 
     public static string Load()
     {
-        if (File.Exists(SAVE_FOLDER + "/save.txt"))
+        DirectoryInfo directoryInfo = new DirectoryInfo(SAVE_FOLDER);
+        FileInfo[] saveFiles = directoryInfo.GetFiles("*.txt");
+        FileInfo mostRecentFile = null;
+        foreach (FileInfo fileInfo in saveFiles)
         {
-            string saveString = File.ReadAllText(SAVE_FOLDER + "/save.txt");
+            if (mostRecentFile == null)
+            {
+                mostRecentFile = fileInfo;
+            }
+            else
+            {
+                if (fileInfo.LastWriteTime > mostRecentFile.LastWriteTime)
+                {
+                    mostRecentFile = fileInfo;
+                }
+            }
+        }
+
+        if (mostRecentFile != null)
+        {
+            string saveString = File.ReadAllText(SAVE_FOLDER + mostRecentFile.FullName);
             return saveString;
         }
         else
