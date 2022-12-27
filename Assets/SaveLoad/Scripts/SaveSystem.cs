@@ -3,27 +3,56 @@ using UnityEngine;
 
 public static class SaveSystem
 {
+    private const string SAVE_EXTENSION = "txt";
+
     private static readonly string SAVE_FOLDER = Application.dataPath + "/Saves/";
+    private static bool isInit = false;
+
     public static void Init()
     {
-        if (!Directory.Exists(SAVE_FOLDER))
+        if (!isInit)
         {
-            Directory.CreateDirectory(SAVE_FOLDER);
+            isInit = true;
+            if (!Directory.Exists(SAVE_FOLDER))
+            {
+                Directory.CreateDirectory(SAVE_FOLDER);
+            }
         }
     }
 
-    public static void Save(string saveString)
+    public static void Save(string fileName, string saveString, bool overwrite)
     {
-        int saveNumber = 1;
-        while (File.Exists("save_" + saveNumber + ".txt"))
+        Init();
+        string saveFileName = fileName;
+        if (!overwrite)
         {
-            saveNumber++;
+            int saveNumber = 1;
+            while (File.Exists(SAVE_FOLDER + saveFileName + "." + SAVE_EXTENSION))
+            {
+                saveNumber++;
+                saveFileName = fileName + "_" + saveNumber;
+            }
         }
-        File.WriteAllText(SAVE_FOLDER + "save" + saveNumber + ".txt", saveString);
+        File.WriteAllText(SAVE_FOLDER + saveFileName + "." + SAVE_EXTENSION, saveString);
     }
 
-    public static string Load()
+    public static string Load(string fileName)
     {
+        Init();
+        if (File.Exists(SAVE_FOLDER + fileName + "." + SAVE_EXTENSION))
+        {
+            string saveString = File.ReadAllText(SAVE_FOLDER + fileName + "." + SAVE_EXTENSION);
+            return saveString;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    public static string LoadMostRecentFile()
+    {
+        Init();
         DirectoryInfo directoryInfo = new DirectoryInfo(SAVE_FOLDER);
         FileInfo[] saveFiles = directoryInfo.GetFiles("*.txt");
         FileInfo mostRecentFile = null;
@@ -50,6 +79,48 @@ public static class SaveSystem
         else
         {
             return null;
+        }
+    }
+
+    public static void SaveObject(object saveObject)
+    {
+        SaveObject("save", saveObject, false);
+    }
+
+    public static void SaveObject(string fileName, object saveObject, bool overwrite)
+    {
+        Init();
+        string json = JsonUtility.ToJson(saveObject);
+        Save(fileName, json, overwrite);
+    }
+
+    public static TSaveObject LoadMostRecentObject<TSaveObject>()
+    {
+        Init();
+        string saveString = LoadMostRecentFile();
+        if (saveString != null)
+        {
+            TSaveObject saveObject = JsonUtility.FromJson<TSaveObject>(saveString);
+            return saveObject;
+        }
+        else
+        {
+            return default(TSaveObject);
+        }
+    }
+
+    public static TSaveObject LoadObject<TSaveObject>(string fileName)
+    {
+        Init();
+        string saveString = Load(fileName);
+        if (saveString != null)
+        {
+            TSaveObject saveObject = JsonUtility.FromJson<TSaveObject>(saveString);
+            return saveObject;
+        }
+        else
+        {
+            return default(TSaveObject);
         }
     }
 }
