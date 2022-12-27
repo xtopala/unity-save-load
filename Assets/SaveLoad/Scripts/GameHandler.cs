@@ -4,14 +4,15 @@ using System.IO;
 
 public class GameHandler : MonoBehaviour
 {
-    private const string SAVE_SEPARATOR = "#SAVE-VALUE#";
-
     [SerializeField] private GameObject unitGameObject;
     private IUnit unit;
 
     private void Awake()
     {
         unit = unitGameObject.GetComponent<IUnit>();
+
+        SaveSystem.Init();
+
     }
 
     private void Update()
@@ -44,15 +45,10 @@ public class GameHandler : MonoBehaviour
         Vector3 playerPosition = unit.GetPosition();
         int goldAmount = unit.GetGoldAmount();
 
-        
-        string[] contents = new string[]
-        {
-            ""+goldAmount,
-            ""+playerPosition.x,
-            ""+playerPosition.y
-        };
-        string saveString = string.Join(SAVE_SEPARATOR, contents);
-        File.WriteAllText(Application.dataPath + "/save.txt", saveString);
+
+        SaveObject saveObject = new SaveObject { goldAmount = goldAmount, playerPosition = playerPosition };
+        string json = JsonUtility.ToJson(saveObject);
+        SaveSystem.Save(json);
 
         CMDebug.TextPopupMouse("Saved");
     }
@@ -79,16 +75,24 @@ public class GameHandler : MonoBehaviour
 
     private void Load()
     {
-        string saveString = File.ReadAllText(Application.dataPath + "/save.txt");
-        CMDebug.TextPopupMouse("Loaded: " + saveString);
+        string saveString = SaveSystem.Load();
+        if (saveString != null)
+        {
+            CMDebug.TextPopupMouse("Loaded: " + saveString);
+            SaveObject saveObject = JsonUtility.FromJson<SaveObject>(saveString);
 
-        string[] contents = saveString.Split(SAVE_SEPARATOR, System.StringSplitOptions.None);
-        int goldAmount = int.Parse(contents[0]);
-        float playerPositionX = float.Parse(contents[1]);
-        float playerPositionY = float.Parse(contents[2]);
-        Vector3 playerPosition = new(playerPositionX, playerPositionY);
+            unit.SetGoldAmount(saveObject.goldAmount);
+            unit.SetPosition(saveObject.playerPosition);
+        }
+        else
+        {
+            CMDebug.TextPopupMouse("No save");
+        }
+    }
 
-        unit.SetGoldAmount(goldAmount);
-        unit.SetPosition(playerPosition);
+    private class SaveObject
+    {
+        public int goldAmount;
+        public Vector3 playerPosition;
     }
 }
